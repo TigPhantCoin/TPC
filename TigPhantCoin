@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract TigPhantcoin {
+    string public constant name = "TigPhantcoin";
+    string public constant symbol = "TPC";
+    uint8 public constant decimals = 18;
+    uint256 public totalSupply;
+
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+    mapping(address => bool) public isMinter;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Mint(address indexed to, uint256 value);
+    event MinterAdded(address indexed minter);
+    event MinterRemoved(address indexed minter);
+
+    constructor(uint256 initialSupply) {
+        totalSupply = initialSupply * 10 ** uint256(decimals);
+        balanceOf[msg.sender] = totalSupply;
+        isMinter[msg.sender] = true;
+    }
+
+    modifier onlyMinter() {
+        require(isMinter[msg.sender], "Caller is not a minter");
+        _;
+    }
+
+    function transfer(address to, uint256 value) public returns (bool success) {
+        require(balanceOf[msg.sender] >= value, "Not enough balance");
+        balanceOf[msg.sender] -= value;
+        balanceOf[to] += value;
+        emit Transfer(msg.sender, to, value);
+        return true;
+    }
+
+    function approve(address spender, uint256 value) public returns (bool success) {
+        allowance[msg.sender][spender] = value;
+        emit Approval(msg.sender, spender, value);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 value) public returns (bool success) {
+        require(value <= balanceOf[from], "Not enough balance");
+        require(value <= allowance[from][msg.sender], "Not enough allowance");
+        balanceOf[from] -= value;
+        balanceOf[to] += value;
+        allowance[from][msg.sender] -= value;
+        emit Transfer(from, to, value);
+        return true;
+    }
+
+    function mint(address to, uint256 value) public onlyMinter {
+        require(to != address(0), "Mint to the zero address");
+        totalSupply += value;
+        balanceOf[to] += value;
+        emit Transfer(address(0), to, value);
+        emit Mint(to, value);
+    }
+
+    function addMinter(address minter) public onlyMinter {
+        isMinter[minter] = true;
+        emit MinterAdded(minter);
+    }
+
+    function removeMinter(address minter) public onlyMinter {
+        isMinter[minter] = false;
+        emit MinterRemoved(minter);
+    }
+}
